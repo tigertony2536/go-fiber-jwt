@@ -1,4 +1,4 @@
-package main
+package domain
 
 import (
 	"os"
@@ -22,7 +22,6 @@ func CreateToken(email, role string) (JWT, error) {
 	t2 := jwt.New(jwt.SigningMethodHS256)
 	c2 := t2.Claims.(jwt.MapClaims)
 	c2["email"] = email
-	c2["role"] = role
 	c2["exp"] = time.Now().Add(time.Hour * 24 * 7).Unix()
 	rt, err := t2.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {

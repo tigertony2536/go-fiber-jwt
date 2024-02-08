@@ -1,13 +1,16 @@
-package main
+package domain
+
+import "gorm.io/gorm"
 
 type (
-	Quote struct {
-		Text []string `json:"text"`
-	}
-
-	RequestLogin struct {
+	UserLogin struct {
+		gorm.Model
 		Email    string `json:"email"`
 		Password string `json:"password"`
+	}
+
+	Quote struct {
+		Text []string `json:"text"`
 	}
 
 	JWT struct {
