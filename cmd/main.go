@@ -7,6 +7,8 @@ import (
 	"github.com/tigertony2536/go-login/internal/adaptor/database"
 	"github.com/tigertony2536/go-login/internal/adaptor/router"
 	"github.com/tigertony2536/go-login/internal/config"
+	"github.com/tigertony2536/go-login/internal/core"
+	"github.com/tigertony2536/go-login/internal/core/domain"
 )
 
 func main() {
@@ -19,11 +21,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	err = db.AutoMigrate(&domain.UserLogin{})
+	if err != nil {
+		log.Fatal("migration fail: ", err)
+	}
 	userRepo := database.NewUserRepositoryImpl(db)
-	authHandler := router.NewAuthHandler(userRepo)
+	authService := core.NewAuthService(userRepo)
+	authHandler := router.NewAuthHandler(authService)
 	rt := router.NewRouter(authHandler, config)
 	err = rt.Serve(config.HttpConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 }
