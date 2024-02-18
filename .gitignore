@@ -23,4 +23,5 @@ go.work
 # others
 *.json
 *.http
-*.drawio
+*.drawio*
+/data

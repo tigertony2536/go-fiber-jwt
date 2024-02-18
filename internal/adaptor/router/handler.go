@@ -3,39 +3,54 @@ package router
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/tigertony2536/go-login/internal/domain"
-	"github.com/tigertony2536/go-login/internal/port"
+	"github.com/tigertony2536/go-login/internal/core"
+	"github.com/tigertony2536/go-login/internal/core/domain"
 )
 
 type AuthHandler struct {
-	repo port.UserRepository
+	as *core.AuthServiceImpl
 }
 
-func NewAuthHandler(repo port.UserRepository) *AuthHandler {
-	return &AuthHandler{repo: repo}
+func NewAuthHandler(as *core.AuthServiceImpl) *AuthHandler {
+	return &AuthHandler{as: as}
+}
+
+type Response struct {
+	ErrorMessage string
+}
+
+func (a *AuthHandler) Register() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req domain.UserLogin
+		err := c.BodyParser(&req)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				ErrorMessage: "username or password wrong",
+			})
+		}
+		err = a.as.Register(&req)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				ErrorMessage: "This email have been used",
+			})
+		}
+		return c.JSON(req)
+	}
 }
 
 func (a *AuthHandler) Login(secretKey string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req domain.UserLogin
-		c.BodyParser(&req)
-		u, err := a.repo.GetUserByEmail(req.Email)
+		err := c.BodyParser(&req)
 		if err != nil {
-			c.JSON(fiber.Map{
-				"status":  fiber.StatusUnauthorized,
-				"message": "user not found",
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": err.Error(),
 			})
 		}
-		if req.Password != u.Password {
-			return c.JSON(fiber.Map{
-				"status":  fiber.StatusUnauthorized,
-				"message": "wrong password",
-			})
-		}
-		token, err := domain.CreateToken(req.Email, "users")
+		token, err := a.as.Login(&req)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "create token fail",
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": err.Error(),
 			})
 		}
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{

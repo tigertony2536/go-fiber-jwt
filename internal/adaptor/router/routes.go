@@ -15,8 +15,9 @@ func NewRouter(a *AuthHandler, cfg *config.Config) *Router {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON("Hello World")
 	})
-
+	app.Post("/register", a.Register())
 	app.Post("/login", a.Login(cfg.HttpConfig.JwtSecret))
+	// app.Delete("/delete")
 	app.Get("/refresh", a.Refresh)
 
 	//Middleware 2: Validating JWT
