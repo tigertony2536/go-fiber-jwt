@@ -13,10 +13,15 @@ type UserRepository interface {
 
 type AuthService interface {
 	//user
-	Login()
-	Refresh()
-	Delete()
-	Update()
+	Register(user *domain.UserLogin) error
+	Login(req *domain.UserLogin) (*domain.PairedToken, error)
+	Refresh() error
+	ChangeRole() error
+	CreateSession(email, token string) error
 	//admin
+}
 
+type AuthRepository interface {
+	CreateSession(session *domain.Session) error
+	GetSession(email string) (*domain.Session, error)
 }

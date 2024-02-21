@@ -1,33 +1,72 @@
 package core
 
 import (
-	"os"
+	"errors"
+	"log"
+	"runtime"
+	"strings"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/tigertony2536/go-login/internal/core/domain"
 )
 
-func CreateToken(email, role string) (domain.Token, error) {
-	var token domain.Token
-	t1 := jwt.New(jwt.SigningMethodHS256)
-	c1 := t1.Claims.(jwt.MapClaims)
-	c1["email"] = email
-	c1["role"] = role
-	c1["exp"] = time.Now().Add(time.Hour * 24).Unix()
-	t, err := t1.SignedString([]byte(os.Getenv("JWT_SECRET")))
-	if err != nil {
-		return token, err
-	}
-	token.AccessToken = t
-	t2 := jwt.New(jwt.SigningMethodHS256)
-	c2 := t2.Claims.(jwt.MapClaims)
-	c2["email"] = email
-	c2["exp"] = time.Now().Add(time.Hour * 24 * 7).Unix()
-	rt, err := t2.SignedString([]byte(os.Getenv("JWT_SECRET")))
-	if err != nil {
-		return token, err
-	}
+func CreatePairedToken(user *domain.UserLogin, secret string) (*domain.PairedToken, error) {
+	var token domain.PairedToken
+	accessClaim := domain.JWTClaim{user.ID, user.Email, user.Role, jwt.RegisteredClaims{IssuedAt: jwt.NewNumericDate(time.Now())}}
+	at := CreateToken(accessClaim, secret)
+	token.AccessToken = at
+	refreshClaim := domain.JWTClaim{user.ID, "", "", jwt.RegisteredClaims{IssuedAt: jwt.NewNumericDate(time.Now())}}
+	rt := CreateToken(refreshClaim, secret)
 	token.RefreshToken = rt
-	return token, nil
+	return &token, nil
+}
+
+func CreateToken(claim domain.JWTClaim, secret string) string {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
+
+	jwtToken, err := token.SignedString([]byte(secret))
+	if err != nil {
+		panic(err)
+	}
+	return jwtToken
+}
+
+func ParseToken(token, secret string) (*domain.JWTClaim, error) {
+	var userClaim domain.JWTClaim
+	t, err := jwt.ParseWithClaims(token, &userClaim, func(t *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !t.Valid {
+		return nil, errors.New("invalid token")
+	}
+	return &userClaim, nil
+}
+
+func GetClaim(c *fiber.Ctx, secret string) *domain.JWTClaim {
+	auth := c.Get("Authorization")
+	token, _ := strings.CutPrefix(auth, "Bearer ")
+	claim, err := ParseToken(token, secret)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return claim
+}
+
+func GetFuncName(n int) string {
+	pc, _, _, ok := runtime.Caller(n)
+	details := runtime.FuncForPC(pc)
+	if ok && details != nil {
+		name := details.Name()
+		index := strings.LastIndex(name, ".")
+		if index >= 0 {
+			return name[index+1:]
+		}
+		return name
+	}
+	return ""
 }

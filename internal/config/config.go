@@ -18,8 +18,10 @@ type (
 		Timezone string
 	}
 	HttpConfig struct {
-		SERVER_Port string
-		JwtSecret   string
+		SERVER_Port   string
+		JwtSecret     string
+		JwtAccessExp  string
+		JwtRefreshExp string
 	}
 )
 
@@ -42,8 +44,10 @@ func NewConfig() *Config {
 
 	//Http Config
 	httpConifg := NewHttpConfig()
-	httpConifg.JwtSecret = os.Getenv("JWT_SECRET")
 	httpConifg.SERVER_Port = os.Getenv("SERVER_PORT")
+	httpConifg.JwtSecret = os.Getenv("JWT_SECRET")
+	httpConifg.JwtAccessExp = os.Getenv("JWT_ACCESS_EXP")
+	httpConifg.JwtAccessExp = os.Getenv("JWT_REFRESH_EXP")
 	return &Config{
 		DBConfig:   dbConfig,
 		HttpConfig: httpConifg,

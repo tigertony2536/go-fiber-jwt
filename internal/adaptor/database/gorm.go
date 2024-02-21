@@ -1,7 +1,6 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"os"
@@ -9,7 +8,6 @@ import (
 	"time"
 
 	"github.com/tigertony2536/go-login/internal/config"
-	"github.com/tigertony2536/go-login/internal/core/domain"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -51,21 +49,4 @@ func NewLogger() logger.Interface {
 		},
 	)
 	return newLogger
-}
-
-func InnitializeDB() (*gorm.DB, *sql.DB) {
-	db, err := NewTestDB()
-	if err != nil {
-		log.Fatal(err)
-	}
-	d, err := db.DB()
-	if err != nil {
-		log.Fatal(err)
-	}
-	var users domain.UserLogin
-	db.AutoMigrate(&users)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return db, d
 }

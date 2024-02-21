@@ -1,15 +1,27 @@
 package database_test
 
 import (
+	"log"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/tigertony2536/go-login/internal/adaptor/database"
 	"github.com/tigertony2536/go-login/internal/core/domain"
 )
 
+func init() {
+	err := godotenv.Load("D:\\dev\\go\\src\\03-side-projects\\go-login\\.env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+}
+
 func TestCreateUser(t *testing.T) {
-	gorm, db := database.InnitializeDB()
+	gorm, db, err := database.NewTestDB()
+	if err != nil {
+		t.Fatal(err)
+	}
 	ur := database.NewUserRepositoryImpl(gorm)
 	defer db.Close()
 	t.Run("Create user successfully", func(t *testing.T) {
@@ -31,15 +43,18 @@ func TestCreateUser(t *testing.T) {
 
 // Get User by ID
 func TestGetUserByID(t *testing.T) {
-	gorm, db := database.InnitializeDB()
-	ur := database.NewUserRepositoryImpl(gorm)
+	gorm, db, err := database.NewTestDB()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer db.Close()
+	ur := database.NewUserRepositoryImpl(gorm)
 	t.Run("Get user successfully", func(t *testing.T) {
 		expected := domain.UserLogin{Email: "user1@user.com", Password: "user1"}
 		ur.CreateUser(&expected)
 		result, _ := ur.GetUserByEmail("user1@user.com")
 		r := *result
-		res, err := ur.GetUserByID(int(r.ID))
+		res, err := ur.GetUserByID(r.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, res.Email, res.Email)
 		assert.Equal(t, res.Password, res.Password)
@@ -55,19 +70,23 @@ func TestGetUserByID(t *testing.T) {
 
 // GetUserByEmail
 func TestGetUserByEmail(t *testing.T) {
-	gorm, db := database.InnitializeDB()
-	ur := database.NewUserRepositoryImpl(gorm)
+	gorm, db, err := database.NewTestDB()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer db.Close()
+	ur := database.NewUserRepositoryImpl(gorm)
 	t.Run("Get user successfully", func(t *testing.T) {
-		expected := domain.UserLogin{Email: "user1@user.com", Password: "user1"}
+		expected := domain.UserLogin{Email: "user1@user.com", Password: "password1"}
 		_, err := ur.CreateUser(&expected)
-		if assert.NoError(t, err) {
-			result, err := ur.GetUserByEmail("user1@user.com")
-			assert.NoError(t, err)
-			r := *result
-			assert.Equal(t, expected.Email, r.Email)
-			assert.Equal(t, expected.Password, r.Password)
+		if err != nil {
+			t.Fatal(err)
 		}
+		result, err := ur.GetUserByEmail("user1@user.com")
+		assert.NoError(t, err)
+		r := *result
+		assert.Equal(t, expected.Email, r.Email)
+		assert.Equal(t, expected.Password, r.Password)
 	})
 	t.Run("Not found this email in database", func(t *testing.T) {
 
@@ -80,9 +99,13 @@ func TestGetUserByEmail(t *testing.T) {
 
 // // GetUsers
 func TestGetUsers(t *testing.T) {
-	gorm, db := database.InnitializeDB()
-	ur := database.NewUserRepositoryImpl(gorm)
+	gorm, db, err := database.NewTestDB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	gorm.AutoMigrate(&domain.Session{})
 	defer db.Close()
+	ur := database.NewUserRepositoryImpl(gorm)
 	t.Run("No users in database", func(t *testing.T) {
 		result, err := ur.GetUsers()
 		assert.NoError(t, err)
@@ -109,9 +132,13 @@ func TestGetUsers(t *testing.T) {
 
 // // UpdateUser
 func TestUpdateUser(t *testing.T) {
-	gorm, db := database.InnitializeDB()
-	ur := database.NewUserRepositoryImpl(gorm)
+	gorm, db, err := database.NewTestDB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	gorm.AutoMigrate(&domain.Session{})
 	defer db.Close()
+	ur := database.NewUserRepositoryImpl(gorm)
 	t.Run("Update user successfully", func(t *testing.T) {
 		oldUser := domain.UserLogin{Email: "old@user.com", Password: "oldpass"}
 		expected := domain.UserLogin{Email: "new@user.com", Password: "newpass"}
@@ -136,9 +163,12 @@ func TestUpdateUser(t *testing.T) {
 
 // DeleteUser
 func TestDeleteUser(t *testing.T) {
-	gorm, db := database.InnitializeDB()
-	ur := database.NewUserRepositoryImpl(gorm)
+	gorm, db, err := database.NewTestDB()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer db.Close()
+	ur := database.NewUserRepositoryImpl(gorm)
 	t.Run("Delete user successfully", func(t *testing.T) {
 		user := domain.UserLogin{Email: "user1@user.com", Password: "user1"}
 
@@ -146,11 +176,10 @@ func TestDeleteUser(t *testing.T) {
 		if err != nil {
 			t.Fatal("Creating user failed: ", err)
 		}
-
-		err = ur.DeleteUser("user1@user.com")
+		err = ur.DeleteUser(user.Email)
 		assert.NoError(t, err)
 
-		result, err := ur.GetUserByEmail("user1@user.com")
+		result, err := ur.GetUserByEmail(user.Email)
 		var nilpointer *domain.UserLogin
 		assert.Equal(t, nilpointer, result)
 		assert.Error(t, err)

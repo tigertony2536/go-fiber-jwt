@@ -10,25 +10,28 @@ type Router struct {
 	app *fiber.App
 }
 
-func NewRouter(a *AuthHandler, cfg *config.Config) *Router {
+func NewRouter(a *AuthHandler, u *UserHandler, cfg *config.Config) *Router {
 	app := fiber.New()
+
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON("Hello World")
 	})
-	app.Post("/register", a.Register())
+	app.Post("/register", a.Register("user"))
+	app.Post("/admin", a.Register("admin"))
 	app.Post("/login", a.Login(cfg.HttpConfig.JwtSecret))
-	// app.Delete("/delete")
-	app.Get("/refresh", a.Refresh)
 
-	//Middleware 2: Validating JWT
 	app.Use(jwtware.New(jwtware.Config{
 		SigningKey: []byte(cfg.HttpConfig.JwtSecret),
 	}))
-
-	// app.Get("/logout", )
-
+	app.Get("/refresh", a.Refresh(cfg.HttpConfig.JwtSecret))
+	app.Post("/home", func(c *fiber.Ctx) error {
+		return c.JSON("Welcome to Homepage")
+	})
+	app.Delete("/delete", a.DeleteAccount())
+	app.Use(a.Protected(cfg.HttpConfig.JwtSecret))
+	app.Get("/users", u.GetUsers())
 	//Middleware 2: Check role
-	app.Use(a.CheckRole)
+
 	return &Router{app: app}
 }
 
